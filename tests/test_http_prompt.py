@@ -7,7 +7,7 @@ import unittest
 import http.server
 import threading
 import json
-from src.core.engine import SessionContext, RequestExecutor
+from src.core.engine import SessionContext, RequestExecutor, SecurityError
 from src.mcp.server import HTTPPromptMCPServer
 
 
@@ -112,6 +112,36 @@ class TestHTTPPromptReloaded(unittest.TestCase):
         content = json.loads(exec_resp["result"]["content"][0]["text"])
         self.assertEqual(content["status"], 200)
         self.assertIn("/mcp-test", content["url"])
+
+    def test_security_crlf_header_injection(self):
+        sess = SessionContext("http://api.local")
+        with self.assertRaises(SecurityError):
+            sess.set_header("X-Injected\r\nSet-Cookie: evil=1", "val")
+        with self.assertRaises(SecurityError):
+            sess.set_header("Authorization", "Bearer 123\nInjected-Header: evil")
+
+    def test_security_ssrf_cloud_metadata_blocked(self):
+        with self.assertRaises(SecurityError):
+            SessionContext("http://169.254.169.254/latest/meta-data/")
+        with self.assertRaises(SecurityError):
+            SessionContext("http://metadata.google.internal/computeMetadata/v1/")
+
+    def test_security_dangerous_schemes_blocked(self):
+        with self.assertRaises(SecurityError):
+            SessionContext("file:///etc/passwd")
+        with self.assertRaises(SecurityError):
+            SessionContext("gopher://127.0.0.1:25")
+
+    def test_security_url_traversal_sanitization(self):
+        sess = SessionContext("http://api.local")
+        sess.cd("/api/v1/users/../../admin")
+        self.assertEqual(sess.current_path, "/api/admin")
+        # Relative traversal up one level
+        sess.cd("%2e%2e/billing")
+        self.assertEqual(sess.current_path, "/api/billing")
+        # Traversal beyond root collapses safely to root
+        sess.cd("../../../../../system")
+        self.assertEqual(sess.current_path, "/system")
 
 
 if __name__ == "__main__":

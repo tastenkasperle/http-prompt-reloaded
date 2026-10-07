@@ -7,7 +7,13 @@ Anti-Carbonara: Pure Logic, No CLI, No print(), No sys.exit().
 import urllib.request
 import urllib.parse
 import json
+import re
 from typing import Dict, Any, List, Optional, NamedTuple
+
+
+class SecurityError(ValueError):
+    """Raised when security boundaries (SSRF, CRLF injection, invalid scheme) are breached."""
+    pass
 
 
 class ExecutionResult(NamedTuple):
@@ -20,8 +26,19 @@ class ExecutionResult(NamedTuple):
 
 
 class SessionContext:
-    def __init__(self, base_url: str = "http://localhost"):
-        self.base_url = base_url.rstrip("/")
+    # Regex to detect CRLF header injection attempts
+    CRLF_REGEX = re.compile(r"[\r\n]")
+
+    # Blocked dangerous cloud metadata addresses for SSRF protection
+    BLOCKED_HOSTS = {
+        "169.254.169.254",   # AWS/GCP/Azure link-local metadata
+        "metadata.google.internal",
+        "instance-data"
+    }
+
+    def __init__(self, base_url: str = "http://localhost", allow_private_networks: bool = True):
+        self.allow_private_networks = allow_private_networks
+        self.base_url = self._validate_and_sanitize_url(base_url)
         self.current_path = "/"
         self.headers: Dict[str, str] = {
             "User-Agent": "HTTP-Prompt-Reloaded/1.0",
@@ -30,15 +47,30 @@ class SessionContext:
         self.query_params: Dict[str, str] = {}
         self.body_data: Optional[Dict[str, Any]] = None
 
+    def _validate_and_sanitize_url(self, url: str) -> str:
+        parsed = urllib.parse.urlparse(url.strip())
+        if parsed.scheme.lower() not in ("http", "https"):
+            raise SecurityError(f"Unsupported or dangerous URL scheme: '{parsed.scheme}'. Only HTTP and HTTPS are permitted.")
+
+        host = (parsed.hostname or "").lower()
+        if host in self.BLOCKED_HOSTS:
+            raise SecurityError(f"SSRF Protection: Requests to cloud metadata endpoint '{host}' are forbidden.")
+
+        return url.rstrip("/")
+
     def cd(self, path: str) -> str:
         """Navigates the API URL structure like a file system directory."""
         path = path.strip()
         if not path:
             return self.get_full_url()
 
-        if path.startswith("/"):
-            self.current_path = path
-        elif path == "..":
+        # Sanitize against path traversal escapes
+        # Decode first to catch encoded traversal like %2e%2e
+        unquoted = urllib.parse.unquote(path)
+
+        if unquoted.startswith("/"):
+            self.current_path = unquoted
+        elif unquoted == "..":
             parts = [p for p in self.current_path.strip("/").split("/") if p]
             if parts:
                 parts.pop()
@@ -46,15 +78,28 @@ class SessionContext:
         else:
             if not self.current_path.endswith("/"):
                 self.current_path += "/"
-            self.current_path += path
+            self.current_path += unquoted
 
-        # Clean multiple slashes
-        clean_parts = [p for p in self.current_path.split("/") if p]
+        # Clean redundant or traversal parts safely
+        clean_parts: List[str] = []
+        for segment in self.current_path.split("/"):
+            if not segment or segment == ".":
+                continue
+            if segment == "..":
+                if clean_parts:
+                    clean_parts.pop()
+            else:
+                clean_parts.append(segment)
+
         self.current_path = "/" + "/".join(clean_parts) if clean_parts else "/"
         return self.get_full_url()
 
     def set_header(self, key: str, value: str):
-        self.headers[key.strip()] = value.strip()
+        key = key.strip()
+        value = value.strip()
+        if self.CRLF_REGEX.search(key) or self.CRLF_REGEX.search(value):
+            raise SecurityError("Header Injection Detected: Header keys and values must not contain CRLF characters (\\r or \\n).")
+        self.headers[key] = value
 
     def remove_header(self, key: str):
         self.headers.pop(key.strip(), None)

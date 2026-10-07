@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "http-prompt-reloaded"
+version = "1.0.0"
+description = "Stateful interactive HTTP REPL and Agentic MCP engine for API navigation and testing."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "tastenkasperle", email = "chailfinger@gmail.com" }
+]
+keywords = [
+    "http",
+    "repl",
+    "mcp",
+    "model-context-protocol",
+    "api-testing",
+    "rest",
+    "developer-tools"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Software Development :: Testing"
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/tastenkasperle/http-prompt-reloaded"
+Repository = "https://github.com/tastenkasperle/http-prompt-reloaded"
+Issues = "https://github.com/tastenkasperle/http-prompt-reloaded/issues"
+
+[project.scripts]
+http-prompt-reloaded = "src.cli.main:main"
+http-prompt-mcp = "src.mcp.server:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+

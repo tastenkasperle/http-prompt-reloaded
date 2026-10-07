@@ -77,7 +77,28 @@ class HTTPPromptMCPServer:
         method = req.get("method")
         params = req.get("params", {})
 
-        if method == "tools/list":
+        if method == "initialize":
+            return {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {"tools": {}},
+                    "serverInfo": {"name": "http-prompt-reloaded", "version": "1.0.0"}
+                }
+            }
+
+        elif method in ("notifications/initialized", "initialized"):
+            return None
+
+        elif method == "ping":
+            return {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {}
+            }
+
+        elif method == "tools/list":
             return {
                 "jsonrpc": "2.0",
                 "id": req_id,
@@ -169,12 +190,17 @@ class HTTPPromptMCPServer:
             try:
                 req = json.loads(line)
                 resp = self.handle_request(req)
-                sys.stdout.write(json.dumps(resp) + "\n")
-                sys.stdout.flush()
+                if resp is not None:
+                    sys.stdout.write(json.dumps(resp) + "\n")
+                    sys.stdout.flush()
             except Exception:
                 pass
 
 
-if __name__ == "__main__":
+def main():
     server = HTTPPromptMCPServer()
     server.run()
+
+
+if __name__ == "__main__":
+    main()

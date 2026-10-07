@@ -1,0 +1,38 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schema/2025-09-29/server.json",
+  "name": "http-prompt-reloaded",
+  "title": "HTTP Prompt Reloaded",
+  "description": "Stateful interactive HTTP REPL & Agentic MCP engine for API navigation and exploration.",
+  "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tastenkasperle/http-prompt-reloaded"
+  },
+  "bugs": {
+    "url": "https://github.com/tastenkasperle/http-prompt-reloaded/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "tastenkasperle",
+    "email": "chailfinger@gmail.com"
+  },
+  "keywords": [
+    "http",
+    "repl",
+    "api-testing",
+    "rest",
+    "mcp",
+    "developer-tools"
+  ],
+  "packages": [
+    {
+      "registry": "pypi",
+      "name": "http-prompt-reloaded",
+      "version": "1.0.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "command": "http-prompt-mcp"
+    }
+  ]
+}
