@@ -3,7 +3,11 @@
 [![PyPI version](https://img.shields.io/pypi/v/http-prompt-reloaded.svg?color=blue)](https://pypi.org/project/http-prompt-reloaded/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Glama Score](https://glama.ai/mcp/servers/tastenkasperle/http-prompt-reloaded/badges/score.svg)](https://glama.ai/mcp/servers/tastenkasperle/http-prompt-reloaded)
 [![MCP Protocol](https://img.shields.io/badge/MCP-2025--09--29-brightgreen.svg)](https://modelcontextprotocol.io/)
+[![Zero Dependencies](https://img.shields.io/badge/Dependencies-Zero%20(Pure%20Python)-brightgreen.svg)]()
+[![Raptor Guard Certified](https://img.shields.io/badge/SAST%20Audit-0%20Vulnerabilities-success.svg)]()
+[![WDAS Agent Ready](https://img.shields.io/badge/WDAS%20Audit-Grade%20A%20(Agentic)-purple.svg)]()
 
 > **Stateful Interactive API Navigation & Agentic MCP Engine.**  
 > *The legendary 9.1k-star CLI REPL resurrected for modern Python (3.10–3.13) and upgraded into an autonomous AI Agent tool.*
