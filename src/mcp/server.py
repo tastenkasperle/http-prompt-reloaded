@@ -88,7 +88,7 @@ class HTTPPromptMCPServer:
                 }
             }
 
-        elif method in ("notifications/initialized", "initialized"):
+        elif method in ("notifications/initialized", "initialized") or (isinstance(method, str) and method.startswith("notifications/")) or req_id is None:
             return None
 
         elif method == "ping":
@@ -113,7 +113,7 @@ class HTTPPromptMCPServer:
 
             try:
                 if tool_name == "http_prompt_init":
-                    sess.base_url = args.get("base_url").rstrip("/")
+                    sess.base_url = sess._validate_and_sanitize_url(args.get("base_url", ""))
                     sess.current_path = "/"
                     return {
                         "jsonrpc": "2.0",

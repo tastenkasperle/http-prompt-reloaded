@@ -126,6 +126,25 @@ class TestHTTPPromptReloaded(unittest.TestCase):
         with self.assertRaises(SecurityError):
             SessionContext("http://metadata.google.internal/computeMetadata/v1/")
 
+        # Verify MCP http_prompt_init also enforces SSRF and scheme guard
+        server = HTTPPromptMCPServer()
+        ssrf_resp = server.handle_request({
+            "jsonrpc": "2.0",
+            "id": 99,
+            "method": "tools/call",
+            "params": {"name": "http_prompt_init", "arguments": {"base_url": "http://169.254.169.254/latest"}}
+        })
+        self.assertIn("error", ssrf_resp)
+        self.assertIn("SSRF Protection", ssrf_resp["error"]["message"])
+
+        scheme_resp = server.handle_request({
+            "jsonrpc": "2.0",
+            "id": 100,
+            "method": "tools/call",
+            "params": {"name": "http_prompt_init", "arguments": {"base_url": "file:///etc/passwd"}}
+        })
+        self.assertIn("error", scheme_resp)
+
     def test_security_dangerous_schemes_blocked(self):
         with self.assertRaises(SecurityError):
             SessionContext("file:///etc/passwd")

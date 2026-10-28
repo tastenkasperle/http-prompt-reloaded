@@ -33,7 +33,11 @@ class SessionContext:
     BLOCKED_HOSTS = {
         "169.254.169.254",   # AWS/GCP/Azure link-local metadata
         "metadata.google.internal",
-        "instance-data"
+        "metadata",
+        "100.100.100.200",   # Alibaba Cloud metadata
+        "instance-data",
+        "fd00:ec2::254",     # AWS IPv6 IMDS
+        "[fd00:ec2::254]"
     }
 
     def __init__(self, base_url: str = "http://localhost", allow_private_networks: bool = True):
@@ -48,15 +52,22 @@ class SessionContext:
         self.body_data: Optional[Dict[str, Any]] = None
 
     def _validate_and_sanitize_url(self, url: str) -> str:
+        if not url or not isinstance(url, str):
+            raise SecurityError("Invalid or empty URL provided.")
         parsed = urllib.parse.urlparse(url.strip())
         if parsed.scheme.lower() not in ("http", "https"):
             raise SecurityError(f"Unsupported or dangerous URL scheme: '{parsed.scheme}'. Only HTTP and HTTPS are permitted.")
 
         host = (parsed.hostname or "").lower()
-        if host in self.BLOCKED_HOSTS:
+        if (
+            host in self.BLOCKED_HOSTS
+            or host.startswith("169.254.")
+            or "ffff:169.254." in host
+            or "ffff:a9fe:a9fe" in host
+        ):
             raise SecurityError(f"SSRF Protection: Requests to cloud metadata endpoint '{host}' are forbidden.")
 
-        return url.rstrip("/")
+        return url.strip().rstrip("/")
 
     def cd(self, path: str) -> str:
         """Navigates the API URL structure like a file system directory."""
@@ -124,12 +135,24 @@ class SessionContext:
         return url
 
 
+class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def __init__(self, validator):
+        super().__init__()
+        self._validator = validator
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        resolved = urllib.parse.urljoin(req.full_url, newurl)
+        self._validator(resolved)
+        return super().redirect_request(req, fp, code, msg, headers, resolved)
+
+
 class RequestExecutor:
     @staticmethod
     def execute(context: SessionContext, method: str = "GET", override_body: Optional[Any] = None) -> ExecutionResult:
         import time
         method = method.upper()
         url = context.get_full_url()
+        context._validate_and_sanitize_url(url)
 
         data_bytes = None
         headers = dict(context.headers)
@@ -143,10 +166,11 @@ class RequestExecutor:
                 data_bytes = payload.encode("utf-8")
 
         req = urllib.request.Request(url, data=data_bytes, headers=headers, method=method)
+        opener = urllib.request.build_opener(_SafeRedirectHandler(context._validate_and_sanitize_url))
 
         start = time.perf_counter()
         try:
-            with urllib.request.urlopen(req, timeout=10.0) as resp:
+            with opener.open(req, timeout=10.0) as resp:
                 status_code = resp.status
                 resp_headers = dict(resp.getheaders())
                 raw_body = resp.read().decode("utf-8", errors="replace")

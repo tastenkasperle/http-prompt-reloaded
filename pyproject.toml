@@ -10,7 +10,10 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 authors = [
-    { name = "tastenkasperle", email = "chailfinger@gmail.com" }
+    { name = "THE HIVE // BSO", email = "diamantenschmiede@proton.me" }
+]
+maintainers = [
+    { name = "C. H. (BSO Steward)" }
 ]
 keywords = [
     "http",
